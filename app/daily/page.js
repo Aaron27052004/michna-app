@@ -25,6 +25,7 @@ export default function Daily() {
   const [plan, setPlan] = useLS("plan", DEF);
   const [day, setDay] = useState(null);
   const [err, setErr] = useState(false);
+  const [len, setLen] = useState(1);
   const done = plan.done === today();
 
   useEffect(() => {
@@ -32,6 +33,10 @@ export default function Daily() {
     setDay(null); setErr(false);
     take(plan, plan.per).then(setDay).catch(() => setErr(true));
   }, [plan.t, plan.c, plan.m, plan.per, done]);
+
+  useEffect(() => {
+    load(plan.t, plan.c).then((d) => setLen(d.he.length)).catch(() => setLen(Math.max(plan.m, 1)));
+  }, [plan.t, plan.c]);
 
   const finish = () => {
     const y = new Date(Date.now() - 864e5).toLocaleDateString("sv");
@@ -51,6 +56,16 @@ export default function Daily() {
         <label>Traité
           <select value={plan.t} onChange={(e) => setPlan({ ...plan, t: e.target.value, c: 1, m: 1, done: null })}>
             {ALL.map((t) => <option key={t.name} value={t.name}>{t.n}</option>)}
+          </select>
+        </label>
+        <label>Chapitre
+          <select value={plan.c} onChange={(e) => setPlan({ ...plan, c: +e.target.value, m: 1, done: null })}>
+            {Array.from({ length: getT(plan.t).c }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}
+          </select>
+        </label>
+        <label>Mishna de départ
+          <select value={Math.min(plan.m, len)} onChange={(e) => setPlan({ ...plan, m: +e.target.value, done: null })}>
+            {Array.from({ length: len }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}
           </select>
         </label>
         <label>Mishnayot par jour
