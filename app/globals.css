@@ -33,6 +33,15 @@ nav.top .brand{display:flex;align-items:center;gap:.7rem;font:600 1.2rem/1.1 var
 .home-hero .resume{gap:.75rem}
 .home-hero .resume a.primary{background:#fff;color:#12344d;border-color:#fff;font-weight:700;padding:.7rem 1.1rem}
 .home-hero .resume a:not(.primary){color:#fff}
+.settings-link{display:inline-block;margin-top:1.25rem;color:#d8edf6;font-size:.92rem}
+.preference-card{margin:1.5rem 0;padding:1.25rem 1.5rem;border:1px solid var(--line);border-radius:.8rem;background:color-mix(in srgb,var(--bg) 88%,var(--tint))}
+.preference-card h2{margin:.25rem 0 .75rem}
+.preference-description{margin:.25rem 0 1rem;color:var(--mute)}
+.range-setting{display:grid;gap:.5rem;max-width:28rem;color:var(--mute)}
+.range-setting input{width:100%;accent-color:var(--ac)}
+.range-labels{display:flex;justify-content:space-between;font-size:.8rem}
+.field-error{max-width:14rem;color:#b42318}
+.field-loading{color:var(--mute)}
 .library{padding-bottom:1rem}
 .section-heading{margin-bottom:1.5rem}
 .section-heading .eyebrow{color:var(--ac)}

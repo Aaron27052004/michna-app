@@ -11,6 +11,7 @@ export default function Home() {
           <h1>La Michna, <span>chaque jour.</span></h1>
           <p className="hero-description">Parcourez les six ordres de la Michna et approfondissez chaque texte avec le commentaire du Bartenura.</p>
           <Resume />
+          <Link href="/settings" className="settings-link">Paramètres de lecture</Link>
         </div>
       </section>
       <section className="library">

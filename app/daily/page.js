@@ -1,11 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useLS, today } from "@/lib/store";
-import { ALL, getT } from "@/lib/data";
+import { getT } from "@/lib/data";
 import Mishna, { Controls } from "@/components/Mishna";
 import { downloadIcs } from "@/components/Reminder";
+import { PLAN_DEFAULT } from "@/lib/defaults";
 
-const DEF = { t: "Berakhot", c: 1, m: 1, per: 2, done: null, prev: null, streak: 0, remind: false, at: "08:00" };
 const load = (t, c) => fetch(`/api/chapter?t=${t}&c=${c}`).then((r) => (r.ok ? r.json() : Promise.reject()));
 
 // Prend les k prochaines mishnayot à partir du pointeur, en passant au chapitre suivant si besoin
@@ -22,10 +22,9 @@ async function take(plan, k) {
 }
 
 export default function Daily() {
-  const [plan, setPlan] = useLS("plan", DEF);
+  const [plan, setPlan] = useLS("plan", PLAN_DEFAULT);
   const [day, setDay] = useState(null);
   const [err, setErr] = useState(false);
-  const [len, setLen] = useState(1);
   const [continuing, setContinuing] = useState(false);
   const done = plan.done === today();
 
@@ -38,10 +37,6 @@ export default function Daily() {
       .catch(() => { if (!canceled) setErr(true); });
     return () => { canceled = true; };
   }, [plan.t, plan.c, plan.m, plan.per, done, continuing]);
-
-  useEffect(() => {
-    load(plan.t, plan.c).then((d) => setLen(d.he.length)).catch(() => setLen(Math.max(plan.m, 1)));
-  }, [plan.t, plan.c]);
 
   const finish = () => {
     const y = new Date(Date.now() - 864e5).toLocaleDateString("sv");
@@ -77,21 +72,6 @@ export default function Daily() {
     <>
       <h1>Michna du jour</h1>
       <section className="settings">
-        <label>Traité
-          <select value={plan.t} onChange={(e) => changePlan({ t: e.target.value, c: 1, m: 1, done: null })}>
-            {ALL.map((t) => <option key={t.name} value={t.name}>{t.n}</option>)}
-          </select>
-        </label>
-        <label>Chapitre
-          <select value={plan.c} onChange={(e) => changePlan({ c: +e.target.value, m: 1, done: null })}>
-            {Array.from({ length: getT(plan.t).c }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}
-          </select>
-        </label>
-        <label>Mishna de départ
-          <select value={Math.min(plan.m, len)} onChange={(e) => changePlan({ m: +e.target.value, done: null })}>
-            {Array.from({ length: len }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}
-          </select>
-        </label>
         <label>Mishnayot par jour
           <select value={plan.per} onChange={(e) => changePlan({ per: +e.target.value })}>
             {[1, 2, 3, 4, 5].map((n) => <option key={n}>{n}</option>)}
