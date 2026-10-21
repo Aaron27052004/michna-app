@@ -26,13 +26,18 @@ export default function Daily() {
   const [day, setDay] = useState(null);
   const [err, setErr] = useState(false);
   const [len, setLen] = useState(1);
+  const [extra, setExtra] = useState(0);
   const done = plan.done === today();
 
   useEffect(() => {
     if (done) return;
     setDay(null); setErr(false);
-    take(plan, plan.per).then(setDay).catch(() => setErr(true));
-  }, [plan.t, plan.c, plan.m, plan.per, done]);
+    let canceled = false;
+    take(plan, plan.per + extra)
+      .then((result) => { if (!canceled) setDay(result); })
+      .catch(() => { if (!canceled) setErr(true); });
+    return () => { canceled = true; };
+  }, [plan.t, plan.c, plan.m, plan.per, done, extra]);
 
   useEffect(() => {
     load(plan.t, plan.c).then((d) => setLen(d.he.length)).catch(() => setLen(Math.max(plan.m, 1)));
@@ -43,6 +48,10 @@ export default function Daily() {
     setPlan({ ...plan, ...day.next, prev: { t: plan.t, c: plan.c, m: plan.m }, done: today(), streak: plan.done === y ? (plan.streak || 0) + 1 : 1 });
   };
   const undo = () => setPlan({ ...plan, ...plan.prev, done: null, streak: Math.max(0, (plan.streak || 1) - 1) });
+  const changePlan = (updates) => {
+    setExtra(0);
+    setPlan({ ...plan, ...updates });
+  };
   const toggleRemind = async (on) => {
     if (on && "Notification" in window && Notification.permission !== "granted") await Notification.requestPermission();
     setPlan({ ...plan, remind: on });
@@ -54,22 +63,22 @@ export default function Daily() {
       <h1>Michna du jour</h1>
       <section className="settings">
         <label>Traité
-          <select value={plan.t} onChange={(e) => setPlan({ ...plan, t: e.target.value, c: 1, m: 1, done: null })}>
+          <select value={plan.t} onChange={(e) => changePlan({ t: e.target.value, c: 1, m: 1, done: null })}>
             {ALL.map((t) => <option key={t.name} value={t.name}>{t.n}</option>)}
           </select>
         </label>
         <label>Chapitre
-          <select value={plan.c} onChange={(e) => setPlan({ ...plan, c: +e.target.value, m: 1, done: null })}>
+          <select value={plan.c} onChange={(e) => changePlan({ c: +e.target.value, m: 1, done: null })}>
             {Array.from({ length: getT(plan.t).c }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}
           </select>
         </label>
         <label>Mishna de départ
-          <select value={Math.min(plan.m, len)} onChange={(e) => setPlan({ ...plan, m: +e.target.value, done: null })}>
+          <select value={Math.min(plan.m, len)} onChange={(e) => changePlan({ m: +e.target.value, done: null })}>
             {Array.from({ length: len }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}
           </select>
         </label>
         <label>Mishnayot par jour
-          <select value={plan.per} onChange={(e) => setPlan({ ...plan, per: +e.target.value })}>
+          <select value={plan.per} onChange={(e) => changePlan({ per: +e.target.value })}>
             {[1, 2, 3, 4, 5].map((n) => <option key={n}>{n}</option>)}
           </select>
         </label>
@@ -90,6 +99,9 @@ export default function Daily() {
         <>
           <Controls />
           {day.out.map((x) => <Mishna key={`${x.c}.${x.m}`} {...x} />)}
+          <button className="big" onClick={() => setExtra((n) => n + plan.per)}>
+            Continuer avec {plan.per} michnayot supplémentaires
+          </button>
           <button className="primary big" onClick={finish}>J'ai terminé aujourd'hui</button>
         </>
       )}
