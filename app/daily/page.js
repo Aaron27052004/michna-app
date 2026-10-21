@@ -26,18 +26,18 @@ export default function Daily() {
   const [day, setDay] = useState(null);
   const [err, setErr] = useState(false);
   const [len, setLen] = useState(1);
-  const [extra, setExtra] = useState(0);
+  const [continuing, setContinuing] = useState(false);
   const done = plan.done === today();
 
   useEffect(() => {
     if (done) return;
     setDay(null); setErr(false);
     let canceled = false;
-    take(plan, plan.per + extra)
+    take(plan, continuing ? 1 : plan.per)
       .then((result) => { if (!canceled) setDay(result); })
       .catch(() => { if (!canceled) setErr(true); });
     return () => { canceled = true; };
-  }, [plan.t, plan.c, plan.m, plan.per, done, extra]);
+  }, [plan.t, plan.c, plan.m, plan.per, done, continuing]);
 
   useEffect(() => {
     load(plan.t, plan.c).then((d) => setLen(d.he.length)).catch(() => setLen(Math.max(plan.m, 1)));
@@ -45,12 +45,27 @@ export default function Daily() {
 
   const finish = () => {
     const y = new Date(Date.now() - 864e5).toLocaleDateString("sv");
-    setPlan({ ...plan, ...day.next, prev: { t: plan.t, c: plan.c, m: plan.m }, done: today(), streak: plan.done === y ? (plan.streak || 0) + 1 : 1 });
+    setPlan({
+      ...plan,
+      ...day.next,
+      prev: continuing ? plan.prev : { t: plan.t, c: plan.c, m: plan.m },
+      done: today(),
+      streak: plan.done === y ? (plan.streak || 0) + 1 : 1,
+    });
   };
   const undo = () => setPlan({ ...plan, ...plan.prev, done: null, streak: Math.max(0, (plan.streak || 1) - 1) });
   const changePlan = (updates) => {
-    setExtra(0);
+    setContinuing(false);
     setPlan({ ...plan, ...updates });
+  };
+  const continueStudy = () => {
+    setDay(null);
+    setPlan({
+      ...plan,
+      ...day.next,
+      prev: continuing ? plan.prev : { t: plan.t, c: plan.c, m: plan.m },
+    });
+    setContinuing(true);
   };
   const toggleRemind = async (on) => {
     if (on && "Notification" in window && Notification.permission !== "granted") await Notification.requestPermission();
@@ -99,8 +114,8 @@ export default function Daily() {
         <>
           <Controls />
           {day.out.map((x) => <Mishna key={`${x.c}.${x.m}`} {...x} />)}
-          <button className="big" onClick={() => setExtra((n) => n + plan.per)}>
-            Continuer avec {plan.per} michnayot supplémentaires
+          <button className="big" onClick={continueStudy}>
+            J'ai terminé, afficher la michna suivante
           </button>
           <button className="primary big" onClick={finish}>J'ai terminé aujourd'hui</button>
         </>
