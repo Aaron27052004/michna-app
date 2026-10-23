@@ -3,20 +3,19 @@ import { useLS } from "@/lib/store";
 import { PREF_DEFAULT } from "@/lib/defaults";
 
 const html = (s) => ({ __html: s });
+const TALMEDIA_COMMIT = "46e01ba8b7ecabf7e4195789580fad3beb548369";
 
-export function Controls() {
-  const [p, setP] = useLS("pref", PREF_DEFAULT);
-  return (
-    <div className="controls">
-      <button aria-pressed={p.en} onClick={() => setP({ ...p, en: !p.en })}>Traduction anglaise</button>
-    </div>
-  );
-}
+const frenchText = (text) => String(text ?? "").split(/(_[^_]+_)/g).map((part, i) =>
+  part.startsWith("_") && part.endsWith("_")
+    ? <em key={i}>{part.slice(1, -1)}</em>
+    : part
+);
 
-export default function Mishna({ t, c, m, he, en, bart }) {
+export default function Mishna({ t, c, m, he, en, fr, bart }) {
   const id = `${t}.${c}.${m}`;
   const [bms, setBms] = useLS("bm", []);
   const [p] = useLS("pref", PREF_DEFAULT);
+  const lang = p.lang ?? (p.en ? "en" : "he");
   const on = bms.some((b) => b.id === id);
   const toggle = () =>
     setBms((l) => (l.some((b) => b.id === id) ? l.filter((b) => b.id !== id) : [{ id, ts: Date.now(), note: "" }, ...l]));
@@ -29,7 +28,10 @@ export default function Mishna({ t, c, m, he, en, bart }) {
       <div className="body">
         <div>
           <p className="he" lang="he" dir="rtl" style={{ fontSize: p.size + "rem" }} dangerouslySetInnerHTML={html(he)} />
-          {p.en && en && <p className="en" lang="en" dir="ltr" dangerouslySetInnerHTML={html(en)} />}
+          {lang === "en" && en && <p className="translation en" lang="en" dir="ltr" dangerouslySetInnerHTML={html(en)} />}
+          {lang === "fr" && (fr?.text
+            ? <><p className="translation fr" lang="fr" dir="ltr">{frenchText(fr.text)}</p><small className="translation-credit">Traduction : {fr.credit} · {fr.license} · <a href={`https://github.com/micka-coder/talmedia/blob/${TALMEDIA_COMMIT}/michnayot/${encodeURI(fr.source)}`}>Source Talmédia</a></small></>
+            : <p className="translation fr unavailable" lang="fr" dir="ltr">Traduction française non disponible pour cette michna.</p>)}
         </div>
         {bart?.length > 0 && (
           <details open className="bart">

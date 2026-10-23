@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import Mishna, { Controls } from "./Mishna";
+import Mishna from "./Mishna";
 import { useLS } from "@/lib/store";
 
 export default function Chapter({ t, c }) {
@@ -16,8 +16,7 @@ export default function Chapter({ t, c }) {
   if (!d) return <p className="msg">Chargement…</p>;
   return (
     <>
-      <Controls />
-      {d.he.map((h, i) => <Mishna key={i} t={t} c={c} m={i + 1} he={h} en={d.en[i]} bart={d.bart[i]} />)}
+      {d.he.map((h, i) => <Mishna key={i} t={t} c={c} m={i + 1} he={h} en={d.en[i]} fr={d.fr?.[i]} bart={d.bart[i]} />)}
     </>
   );
 }

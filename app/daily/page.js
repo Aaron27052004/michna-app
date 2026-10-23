@@ -1,22 +1,27 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useLS, today } from "@/lib/store";
-import { getT } from "@/lib/data";
-import Mishna, { Controls } from "@/components/Mishna";
-import { downloadIcs } from "@/components/Reminder";
+import { getT, ALL } from "@/lib/data";
+import Mishna from "@/components/Mishna";
 import { PLAN_DEFAULT } from "@/lib/defaults";
 
 const load = (t, c) => fetch(`/api/chapter?t=${t}&c=${c}`).then((r) => (r.ok ? r.json() : Promise.reject()));
 
-// Prend les k prochaines mishnayot à partir du pointeur, en passant au chapitre suivant si besoin
+// Prend les prochaines mishnayot à partir du pointeur et repère les fins de perek.
 async function take(plan, k) {
   const out = [], cache = {};
   let { t, c, m } = plan;
   while (out.length < k && c <= getT(t).c) {
     const d = (cache[c] ??= await load(t, c));
     if (m > d.he.length) { c++; m = 1; continue; }
-    out.push({ t, c, m, he: d.he[m - 1], en: d.en[m - 1], bart: d.bart[m - 1] });
+    out.push({ t, c, m, he: d.he[m - 1], en: d.en[m - 1], fr: d.fr?.[m - 1], bart: d.bart[m - 1], isLastInChapter: m === d.he.length });
     m++;
+  }
+  // Normalise le pointeur lorsque la lecture finit exactement à la dernière michna d'un perek.
+  while (c <= getT(t).c) {
+    const d = (cache[c] ??= await load(t, c));
+    if (m <= d.he.length) break;
+    c++; m = 1;
   }
   return { out, next: { t, c, m } };
 }
@@ -32,7 +37,7 @@ export default function Daily() {
     if (done) return;
     setDay(null); setErr(false);
     let canceled = false;
-    take(plan, continuing ? 1 : plan.per)
+    take(plan, continuing ? 1 : (plan.per || PLAN_DEFAULT.per))
       .then((result) => { if (!canceled) setDay(result); })
       .catch(() => { if (!canceled) setErr(true); });
     return () => { canceled = true; };
@@ -40,48 +45,79 @@ export default function Daily() {
 
   const finish = () => {
     const y = new Date(Date.now() - 864e5).toLocaleDateString("sv");
+    const endedTractate = day.next.c > getT(day.next.t).c;
+    const completedIndex = ALL.findIndex((x) => x.name === plan.t);
+    const followingTractate = ALL[(completedIndex + 1 + ALL.length) % ALL.length];
+    const lastCompletedChapter = [...day.out].reverse().find((item) => item.isLastInChapter);
+    const achievement = endedTractate
+      ? { type: "tractate", t: day.next.t }
+      : lastCompletedChapter ? { type: "chapter", t: lastCompletedChapter.t, c: lastCompletedChapter.c }
+      : plan.pendingAchievement ?? null;
     setPlan({
       ...plan,
-      ...day.next,
+      ...(endedTractate ? { t: followingTractate.name, c: 1, m: 1 } : day.next),
+      achievement,
+      pendingAchievement: null,
       prev: continuing ? plan.prev : { t: plan.t, c: plan.c, m: plan.m },
       done: today(),
       streak: plan.done === y ? (plan.streak || 0) + 1 : 1,
     });
   };
-  const undo = () => setPlan({ ...plan, ...plan.prev, done: null, streak: Math.max(0, (plan.streak || 1) - 1) });
-  const changePlan = (updates) => {
-    setContinuing(false);
-    setPlan({ ...plan, ...updates });
-  };
+  const undo = () => setPlan({ ...plan, ...plan.prev, done: null, achievement: null, pendingAchievement: null, streak: Math.max(0, (plan.streak || 1) - 1) });
   const continueStudy = () => {
+    const lastCompletedChapter = [...day.out].reverse().find((item) => item.isLastInChapter);
+    const endedTractate = day.next.c > getT(day.next.t).c;
+    if (endedTractate) {
+      const y = new Date(Date.now() - 864e5).toLocaleDateString("sv");
+      const completedIndex = ALL.findIndex((x) => x.name === plan.t);
+      const followingTractate = ALL[(completedIndex + 1 + ALL.length) % ALL.length];
+      setPlan({
+        ...plan,
+        t: followingTractate.name,
+        c: 1,
+        m: 1,
+        achievement: { type: "tractate", t: plan.t },
+        pendingAchievement: null,
+        prev: continuing ? plan.prev : { t: plan.t, c: plan.c, m: plan.m },
+        done: today(),
+        streak: plan.done === y ? (plan.streak || 0) + 1 : 1,
+      });
+      return;
+    }
     setDay(null);
     setPlan({
       ...plan,
       ...day.next,
+      pendingAchievement: lastCompletedChapter
+        ? { type: "chapter", t: lastCompletedChapter.t, c: lastCompletedChapter.c }
+        : plan.pendingAchievement,
       prev: continuing ? plan.prev : { t: plan.t, c: plan.c, m: plan.m },
     });
     setContinuing(true);
   };
-  const toggleRemind = async (on) => {
-    if (on && "Notification" in window && Notification.permission !== "granted") await Notification.requestPermission();
-    setPlan({ ...plan, remind: on });
-  };
   const finished = day && day.out.length === 0;
+  const achievement = plan.achievement;
+  const currentIndex = ALL.findIndex((x) => x.name === achievement?.t);
+  const defaultNext = ALL[(currentIndex + 1 + ALL.length) % ALL.length]?.name ?? ALL[0].name;
+  const planIndex = ALL.findIndex((x) => x.name === plan.t);
+  const nextFromCurrent = ALL[(planIndex + 1 + ALL.length) % ALL.length]?.name ?? ALL[0].name;
+  const chooseNextTractate = (t) => setPlan({ ...plan, t, c: 1, m: 1 });
+  const nextPicker = (selected = plan.t === achievement?.t ? defaultNext : plan.t) => (
+    <label className="next-tractate">Quelle massekhet veux-tu commencer ensuite ?
+      <select value={selected} onChange={(e) => chooseNextTractate(e.target.value)}>
+        {ALL.map((item) => <option key={item.name} value={item.name}>{item.n}</option>)}
+      </select>
+    </label>
+  );
 
   return (
     <>
       <h1>Michna du jour</h1>
-      <section className="settings">
-        <label>Mishnayot par jour
-          <select value={plan.per} onChange={(e) => changePlan({ per: +e.target.value })}>
-            {[1, 2, 3, 4, 5].map((n) => <option key={n}>{n}</option>)}
-          </select>
-        </label>
-      </section>
-
       {done ? (
         <div className="msg done">
-          <p>Terminé pour aujourd'hui. Série : {plan.streak} jour{plan.streak > 1 ? "s" : ""}. Prochaine étude : {plan.t.replace(/_/g, " ")} {plan.c}:{plan.m}.</p>
+          {achievement?.type === "tractate" ? <><h2>Kol hakavod ! Tu as terminé la massekhet {achievement.t.replace(/_/g, " ")} !</h2>{nextPicker()}</>
+            : achievement?.type === "chapter" ? <h2>Bravo ! Tu as terminé le perek {achievement.c} de {achievement.t.replace(/_/g, " ")}.</h2> : null}
+          <p>Terminé pour aujourd'hui. Série : {plan.streak} jour{plan.streak > 1 ? "s" : ""}.</p>
           <button onClick={undo}>Annuler</button>
         </div>
       ) : err ? (
@@ -89,24 +125,14 @@ export default function Daily() {
       ) : !day ? (
         <p className="msg">Chargement…</p>
       ) : finished ? (
-        <p className="msg">Traité terminé. Choisis le suivant dans la liste ci-dessus.</p>
+        <div className="msg done"><p>Cette massekhet est terminée. Choisis celle que tu veux étudier ensuite.</p>{nextPicker(nextFromCurrent)}</div>
       ) : (
         <>
-          <Controls />
           {day.out.map((x) => <Mishna key={`${x.c}.${x.m}`} {...x} />)}
-          <button className="big" onClick={continueStudy}>
-            J'ai terminé, afficher la michna suivante
-          </button>
+          <button className="big" onClick={continueStudy}>J'ai terminé, afficher la michna suivante</button>
           <button className="primary big" onClick={finish}>J'ai terminé aujourd'hui</button>
         </>
       )}
-
-      <section className="settings">
-        <h2>Rappel</h2>
-        <label className="row"><input type="checkbox" checked={plan.remind} onChange={(e) => toggleRemind(e.target.checked)} /> Notification quand l'app est ouverte</label>
-        <label>Heure <input type="time" value={plan.at} onChange={(e) => setPlan({ ...plan, at: e.target.value })} /></label>
-        <button onClick={() => downloadIcs(plan.at)}>Ajouter un rappel quotidien à mon agenda (.ics)</button>
-      </section>
     </>
   );
 }

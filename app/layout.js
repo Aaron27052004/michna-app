@@ -28,7 +28,7 @@ export default function Root({ children }) {
           </div>
         </nav>
         <main>{children}</main>
-        <footer>Textes fournis par <a href="https://www.sefaria.org">Sefaria</a>.</footer>
+        <footer>Textes hébreux et anglais fournis par <a href="https://www.sefaria.org">Sefaria</a>. Traductions françaises de <a href="https://github.com/micka-coder/talmedia">Talmédia</a>, avec crédits et licences affichés à la lecture.</footer>
         <Reminder />
       </body>
     </html>

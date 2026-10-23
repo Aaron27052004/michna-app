@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ALL } from "@/lib/data";
 import { PLAN_DEFAULT, PREF_DEFAULT } from "@/lib/defaults";
 import { useLS } from "@/lib/store";
+import { downloadIcs } from "@/components/Reminder";
 
 export default function Settings() {
   const [plan, setPlan] = useLS("plan", PLAN_DEFAULT);
@@ -25,13 +26,30 @@ export default function Settings() {
     return () => { canceled = true; };
   }, [plan.t, plan.c]);
 
-  const updatePlan = (updates) => setPlan({ ...plan, ...updates, done: null });
+  const updatePlan = (updates) => setPlan({ ...plan, ...updates, done: null, achievement: null, pendingAchievement: null });
+  const toggleRemind = async (on) => {
+    if (on && "Notification" in window && Notification.permission !== "granted") await Notification.requestPermission();
+    setPlan({ ...plan, remind: on });
+  };
+  const language = pref.lang ?? (pref.en ? "en" : "he");
   const tractate = ALL.find((item) => item.name === plan.t) || ALL[0];
 
   return (
     <>
       <h1>Paramètres</h1>
       <p className="msg">Personnalisez votre lecture et choisissez où commence votre étude journalière.</p>
+
+      <section className="preference-card">
+        <h2>Langue de lecture</h2>
+        <p className="preference-description">L’hébreu reste affiché. Choisissez la traduction à ajouter au texte original.</p>
+        <label>Traduction
+          <select value={language} onChange={(e) => setPref({ ...pref, lang: e.target.value })}>
+            <option value="he">Hébreu uniquement</option>
+            <option value="en">Anglais · Sefaria</option>
+            <option value="fr">Français · Talmédia</option>
+          </select>
+        </label>
+      </section>
 
       <section className="preference-card">
         <h2>Taille du texte hébreu</h2>
@@ -48,6 +66,26 @@ export default function Settings() {
           />
           <span className="range-labels"><span>Petit</span><span>Grand</span></span>
         </label>
+      </section>
+
+      <section className="preference-card">
+        <h2>Rythme de lecture</h2>
+        <p className="preference-description">Définissez ici le nombre de michnayot à lire chaque jour.</p>
+        <label>Mishnayot par jour
+          <select value={plan.per || PLAN_DEFAULT.per} onChange={(e) => setPlan({ ...plan, per: Number(e.target.value) })}>
+            {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
+      </section>
+
+      <section className="preference-card">
+        <h2>Rappels</h2>
+        <p className="preference-description">Recevez un rappel lorsque l’application est ouverte ou ajoutez l’étude à votre agenda.</p>
+        <div className="settings">
+          <label className="row"><input type="checkbox" checked={Boolean(plan.remind)} onChange={(e) => toggleRemind(e.target.checked)} /> Notification quand l’app est ouverte</label>
+          <label>Heure <input type="time" value={plan.at || PLAN_DEFAULT.at} onChange={(e) => setPlan({ ...plan, at: e.target.value })} /></label>
+          <button onClick={() => downloadIcs(plan.at || PLAN_DEFAULT.at)}>Ajouter un rappel quotidien à mon agenda (.ics)</button>
+        </div>
       </section>
 
       <section className="preference-card">
