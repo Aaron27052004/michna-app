@@ -7,6 +7,7 @@ export async function GET(req) {
   const t = p.get("t"), c = +p.get("c");
   const T = getT(t);
   if (!T || !(c >= 1 && c <= T.c)) return NextResponse.json({ error: "bad ref" }, { status: 400 });
-  try { return NextResponse.json(await chapter(t, c)); }
+  const bartLang = ["en", "fr"].includes(p.get("bart")) ? p.get("bart") : "he";
+  try { return NextResponse.json(await chapter(t, c, bartLang)); }
   catch { return NextResponse.json({ error: "sefaria" }, { status: 502 }); }
 }

@@ -11,7 +11,7 @@ const frenchText = (text) => String(text ?? "").split(/(_[^_]+_)/g).map((part, i
     : part
 );
 
-export default function Mishna({ t, c, m, he, en, fr, bart }) {
+export default function Mishna({ t, c, m, he, en, fr, bart, bartTranslation, bartLang = "he" }) {
   const id = `${t}.${c}.${m}`;
   const [bms, setBms] = useLS("bm", []);
   const [p] = useLS("pref", PREF_DEFAULT);
@@ -37,6 +37,13 @@ export default function Mishna({ t, c, m, he, en, fr, bart }) {
           <details open className="bart">
             <summary>Bartenura</summary>
             {bart.map((x, i) => <p key={i} lang="he" dir="rtl" dangerouslySetInnerHTML={html(x)} />)}
+            {bartLang !== "he" && (bartTranslation?.text
+              ? <div className={`bart-translated ${bartLang}`} lang={bartLang} dir="ltr">
+                <strong>{bartLang === "en" ? "Traduction anglaise" : "Traduction française"}</strong>
+                <p>{bartTranslation.text}</p>
+                <small className="bart-credit">{bartTranslation.credit} · {bartTranslation.license} · {bartTranslation.source}</small>
+              </div>
+              : bartLang === "fr" && <p className="bart-unavailable" lang="fr" dir="ltr">Traduction française non disponible pour ce commentaire.</p>)}
           </details>
         )}
       </div>

@@ -3,23 +3,23 @@ import { useEffect, useState } from "react";
 import { useLS, today } from "@/lib/store";
 import { getT, ALL } from "@/lib/data";
 import Mishna from "@/components/Mishna";
-import { PLAN_DEFAULT } from "@/lib/defaults";
+import { PLAN_DEFAULT, PREF_DEFAULT } from "@/lib/defaults";
 
-const load = (t, c) => fetch(`/api/chapter?t=${t}&c=${c}`).then((r) => (r.ok ? r.json() : Promise.reject()));
+const load = (t, c, bartLang) => fetch(`/api/chapter?t=${t}&c=${c}&bart=${bartLang}`).then((r) => (r.ok ? r.json() : Promise.reject()));
 
 // Prend les prochaines mishnayot à partir du pointeur et repère les fins de perek.
-async function take(plan, k) {
+async function take(plan, k, bartLang) {
   const out = [], cache = {};
   let { t, c, m } = plan;
   while (out.length < k && c <= getT(t).c) {
-    const d = (cache[c] ??= await load(t, c));
+    const d = (cache[c] ??= await load(t, c, bartLang));
     if (m > d.he.length) { c++; m = 1; continue; }
-    out.push({ t, c, m, he: d.he[m - 1], en: d.en[m - 1], fr: d.fr?.[m - 1], bart: d.bart[m - 1], isLastInChapter: m === d.he.length });
+    out.push({ t, c, m, he: d.he[m - 1], en: d.en[m - 1], fr: d.fr?.[m - 1], bart: d.bart[m - 1], bartTranslation: d.bartTranslation?.[m - 1], bartLang, isLastInChapter: m === d.he.length });
     m++;
   }
   // Normalise le pointeur lorsque la lecture finit exactement à la dernière michna d'un perek.
   while (c <= getT(t).c) {
-    const d = (cache[c] ??= await load(t, c));
+    const d = (cache[c] ??= await load(t, c, bartLang));
     if (m <= d.he.length) break;
     c++; m = 1;
   }
@@ -28,6 +28,7 @@ async function take(plan, k) {
 
 export default function Daily() {
   const [plan, setPlan] = useLS("plan", PLAN_DEFAULT);
+  const [pref] = useLS("pref", PREF_DEFAULT);
   const [day, setDay] = useState(null);
   const [err, setErr] = useState(false);
   const [continuing, setContinuing] = useState(false);
@@ -37,11 +38,11 @@ export default function Daily() {
     if (done) return;
     setDay(null); setErr(false);
     let canceled = false;
-    take(plan, continuing ? 1 : (plan.per || PLAN_DEFAULT.per))
+    take(plan, continuing ? 1 : (plan.per || PLAN_DEFAULT.per), pref.bartLang ?? "he")
       .then((result) => { if (!canceled) setDay(result); })
       .catch(() => { if (!canceled) setErr(true); });
     return () => { canceled = true; };
-  }, [plan.t, plan.c, plan.m, plan.per, done, continuing]);
+  }, [plan.t, plan.c, plan.m, plan.per, done, continuing, pref.bartLang]);
 
   const finish = () => {
     const y = new Date(Date.now() - 864e5).toLocaleDateString("sv");

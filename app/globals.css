@@ -97,6 +97,11 @@ nav.top .brand{display:flex;align-items:center;gap:.7rem;font:600 1.2rem/1.1 var
 .bart{background:var(--tint);border-inline-start:3px solid var(--ac);padding:.75rem 1rem;border-radius:.4rem;font-family:var(--serif),serif;font-size:1.15rem;line-height:1.8}
 .bart summary{cursor:pointer;font:600 .9rem var(--sans);color:var(--mute);direction:ltr}
 .bart p{margin:.6rem 0}
+.bart-translated{margin-top:1rem;padding-top:.75rem;border-top:1px solid var(--line);font:1rem/1.8 var(--sans),system-ui,sans-serif;direction:ltr;text-align:left}
+.bart-translated strong{color:var(--mute);font-size:.8rem}
+.bart-translated p{white-space:pre-line}
+.bart-credit{display:block;color:var(--mute);font-size:.72rem}
+.bart-unavailable{font:italic .9rem/1.6 var(--sans),system-ui,sans-serif;color:var(--mute);direction:ltr;text-align:left}
 .pager{display:flex;justify-content:space-between;margin-top:2rem}
 .msg{color:var(--mute);padding:1rem 0}
 .msg.done{border:1px solid var(--line);border-radius:.5rem;padding:1rem}

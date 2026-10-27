@@ -52,6 +52,18 @@ export default function Settings() {
       </section>
 
       <section className="preference-card">
+        <h2>Commentaire du Bartenura</h2>
+        <p className="preference-description">Le commentaire classique reste affiché en hébreu. Choisissez si vous souhaitez aussi une traduction.</p>
+        <label>Traduction du Bartenura
+          <select value={pref.bartLang ?? "he"} onChange={(e) => setPref({ ...pref, bartLang: e.target.value })}>
+            <option value="he">Aucune · hébreu uniquement</option>
+            <option value="en">Anglais · hébreu + anglais</option>
+            <option value="fr">Français · hébreu + français</option>
+          </select>
+        </label>
+      </section>
+
+      <section className="preference-card">
         <h2>Taille du texte hébreu</h2>
         <label className="range-setting">
           <span>Taille : {pref.size.toFixed(1)} rem</span>
