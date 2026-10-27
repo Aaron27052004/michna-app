@@ -43,6 +43,20 @@ def import_translation(path: Path):
     source = json.loads(SOURCE.read_text(encoding="utf-8"))
     expected = dict(walk(source))
     translated = {}
+    if FRENCH.exists():
+        existing = json.loads(FRENCH.read_text(encoding="utf-8"))
+        for identifier, entry in walk(existing):
+            if identifier not in expected:
+                raise ValueError(f"Identifiant inconnu dans le JSON français : {identifier}")
+            credit = entry.get("credit")
+            if not isinstance(credit, str) or not credit.startswith("Traduction française à partir de "):
+                continue
+            text = entry.get("text")
+            if not isinstance(text, str) or not text.strip():
+                raise ValueError(f"Traduction invalide dans le JSON français : {identifier}")
+            translated[identifier] = text
+
+    incoming = {}
     current_id = None
     body = []
 
@@ -52,19 +66,19 @@ def import_translation(path: Path):
             return
         if current_id not in expected:
             raise ValueError(f"Identifiant inconnu : {current_id}")
-        if current_id in translated:
+        if current_id in incoming:
             raise ValueError(f"Identifiant répété : {current_id}")
         text = "\n".join(body).strip("\n")
         if not text.strip():
             raise ValueError(f"Traduction vide : {current_id}")
-        translated[current_id] = text
+        incoming[current_id] = text
         current_id, body = None, []
 
     for line in path.read_text(encoding="utf-8").replace("\r\n", "\n").split("\n"):
         match = OPEN.fullmatch(line)
         if match:
             if current_id is not None:
-                raise ValueError(f"Bloc précédent non terminé avant {line}")
+                save_block()
             current_id = match.group(1)
         elif line == CLOSE:
             if current_id is None:
@@ -76,28 +90,34 @@ def import_translation(path: Path):
             raise ValueError(f"Texte hors d'un bloc : {line[:80]}")
 
     if current_id is not None:
-        raise ValueError(f"Bloc non terminé : {current_id}")
-    missing = expected.keys() - translated.keys()
-    if missing:
-        example = ", ".join(sorted(missing)[:5])
-        raise ValueError(f"{len(missing)} traductions manquantes (ex. {example})")
+        save_block()
+
+    translated.update(incoming)
 
     result = {}
     for identifier, entry in walk(source):
-        tractate, chapter, number = identifier.split("|")
-        result.setdefault(tractate, {}).setdefault(chapter, []).append({
-            **entry,
-            "text": translated[identifier],
-            "credit": f"Traduction française à partir de {entry.get('credit', 'Sefaria')}",
-        })
+        if identifier in translated:
+            result_entry = {
+                **entry,
+                "text": translated[identifier],
+                "credit": f"Traduction française à partir de {entry.get('credit', 'Sefaria')}",
+            }
+        else:
+            result_entry = entry
+        tractate, chapter, _ = identifier.split("|")
+        result.setdefault(tractate, {}).setdefault(chapter, []).append(result_entry)
     FRENCH.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    missing_count = len(expected.keys() - translated.keys())
     print(f"JSON français créé : {FRENCH}")
+    print(f"Traductions disponibles : {len(translated)}/{len(expected)}")
+    if missing_count:
+        print(f"Traductions manquantes : {missing_count} (le texte anglais est conservé en attendant)")
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--import", dest="translated_file", type=Path,
-                        help="Réimporte un TXT traduit et crée lib/bartenura-fr.json")
+                        help="Importe ou complète les traductions dans lib/bartenura-fr.json")
     args = parser.parse_args()
     if args.translated_file:
         import_translation(args.translated_file)
