@@ -21,12 +21,20 @@ def walk(data):
                 yield f"{tractate}|{chapter}|{number}", entry
 
 
+def english_only(text):
+    # Remove Hebrew letters, vowel marks and cantillation, then compact the
+    # remaining English so the translation file stays small and easy to edit.
+    text = re.sub(r"[\u0590-\u05ff\ufb1d-\ufb4f]", "", text)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip(" \t–—-,:;")
+
+
 def export():
     data = json.loads(SOURCE.read_text(encoding="utf-8"))
     with TEXT.open("w", encoding="utf-8", newline="\n") as output:
         for identifier, entry in walk(data):
             output.write(f"[[MISHNAH {identifier}]]\n")
-            output.write(entry["text"].rstrip("\n"))
+            output.write(english_only(entry["text"]))
             output.write(f"\n{CLOSE}\n\n")
     print(f"Texte prêt pour traduction : {TEXT}")
 
