@@ -52,6 +52,18 @@ export default function Settings() {
       </section>
 
       <section className="preference-card">
+        <h2>Langue du Bartenura</h2>
+        <p className="preference-description">Le dibour hamatḥil et le commentaire hébreu restent affichés. La traduction choisie apparaît sous le commentaire.</p>
+        <label>Traduction du Bartenura
+          <select value={pref.bartLang ?? "he"} onChange={(e) => setPref({ ...pref, bartLang: e.target.value })}>
+            <option value="he">Hébreu uniquement</option>
+            <option value="en">Anglais · Sefaria</option>
+            <option value="fr">Français</option>
+          </select>
+        </label>
+      </section>
+
+      <section className="preference-card">
         <h2>Taille du texte hébreu</h2>
         <label className="range-setting">
           <span>Taille : {pref.size.toFixed(1)} rem</span>

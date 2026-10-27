@@ -11,11 +11,12 @@ const frenchText = (text) => String(text ?? "").split(/(_[^_]+_)/g).map((part, i
     : part
 );
 
-export default function Mishna({ t, c, m, he, en, fr, bart }) {
+export default function Mishna({ t, c, m, he, en, fr, bart, bartMeta }) {
   const id = `${t}.${c}.${m}`;
   const [bms, setBms] = useLS("bm", []);
   const [p] = useLS("pref", PREF_DEFAULT);
   const lang = p.lang ?? (p.en ? "en" : "he");
+  const bartLang = p.bartLang ?? "he";
   const on = bms.some((b) => b.id === id);
   const toggle = () =>
     setBms((l) => (l.some((b) => b.id === id) ? l.filter((b) => b.id !== id) : [{ id, ts: Date.now(), note: "" }, ...l]));
@@ -36,7 +37,31 @@ export default function Mishna({ t, c, m, he, en, fr, bart }) {
         {bart?.length > 0 && (
           <details open className="bart">
             <summary>Bartenura</summary>
-            {bart.map((x, i) => <p key={i} lang="he" dir="rtl" dangerouslySetInnerHTML={html(x)} />)}
+            {bart.map((comment, i) => {
+              const aligned = !comment.alignment || comment.alignment === "index";
+              const unavailable = aligned
+                ? bartLang === "fr" ? "Traduction française non disponible pour ce commentaire." : "English translation unavailable."
+                : "Alignement des éditions à vérifier pour ce commentaire.";
+              return <div key={i} className="bart-comment">
+              <p lang="he" dir="rtl">
+                {comment.dibur && <><strong>{comment.dibur}</strong>{comment.he && " "}</>}
+                {comment.he && <span dangerouslySetInnerHTML={html(comment.he)} />}
+              </p>
+              {bartLang === "en" && (comment.en
+                && aligned
+                ? <p className="bart-translation" lang="en" dir="ltr" dangerouslySetInnerHTML={html(comment.en)} />
+                : <p className="bart-translation unavailable" lang="en" dir="ltr">{unavailable}</p>)}
+              {bartLang === "fr" && (comment.fr
+                && aligned
+                ? <p className="bart-translation" lang="fr" dir="ltr">{comment.fr}</p>
+                : <p className="bart-translation unavailable" lang="fr" dir="ltr">{unavailable}</p>)}
+              </div>;
+            })}
+            {bartLang !== "he" && <small className="bart-credit">
+              {bartLang === "fr" ? "Traduction française depuis " : ""}
+              {bartMeta?.[bartLang === "fr" ? "en" : bartLang]?.versionTitle}
+              {bartMeta?.[bartLang === "fr" ? "en" : bartLang]?.license && ` · ${bartMeta[bartLang === "fr" ? "en" : bartLang].license}`}
+            </small>}
           </details>
         )}
       </div>

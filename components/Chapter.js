@@ -16,7 +16,7 @@ export default function Chapter({ t, c }) {
   if (!d) return <p className="msg">Chargement…</p>;
   return (
     <>
-      {d.he.map((h, i) => <Mishna key={i} t={t} c={c} m={i + 1} he={h} en={d.en[i]} fr={d.fr?.[i]} bart={d.bart[i]} />)}
+      {d.he.map((h, i) => <Mishna key={i} t={t} c={c} m={i + 1} he={h} en={d.en[i]} fr={d.fr?.[i]} bart={d.bart[i]} bartMeta={d.bartMeta} />)}
     </>
   );
 }
